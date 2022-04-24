@@ -1,0 +1,340 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+Install Library package and data
+```{r}
+library(ggplot2)
+require(ggrepel)
+require(dplyr)
+require(stats)
+country_waste_data <- read.csv("country_level_data.csv")
+city_waste_data <- read.csv("city_level_data.csv")
+municipal_waste_data <- read.csv("municipal_waste.csv")
+```
+
+Renaming columns
+```{r}
+colnames(country_waste_data)[6] <- "organic_waste"
+colnames(country_waste_data)[7] <- "glass_waste"
+colnames(country_waste_data)[8] <- "metal_waste"
+colnames(country_waste_data)[9] <- "other_waste"
+colnames(country_waste_data)[10] <- "paper_cardboard_waste"
+colnames(country_waste_data)[11] <- "plastic_waste"
+colnames(country_waste_data)[12] <- "rubber_&_leather_waste"
+colnames(country_waste_data)[13] <- "wood_waste"
+colnames(country_waste_data)[14] <- "green_waste"
+country_waste_data
+```
+
+```{r}
+        ggplot(country_waste_data, aes(x = country_name, y = 'plastic waste')) +
+          geom_col() +
+          geom_bar(stat="identity", fill = "darkred") +
+          xlab("Country") + ylab("total waste in tonnes")
+```
+
+Dataset inspection.
+Think of questions to be asked.
+Check if column contains null values.
+```{r}
+dim(country_waste_data)
+str(country_waste_data)
+summary(country_waste_data)
+colnames(country_waste_data)
+is.na(country_waste_data$total_msw_total_msw_generated_tons_year)
+```
+
+Top 10 highest waste generating countries
+```{r}
+complete <- na.omit(country_waste_data$total_msw_total_msw_generated_tons_year)
+sorted <- country_waste_data[order(-country_waste_data$total_msw_total_msw_generated_tons_year),]
+top_10 <- head(sorted, 10)
+ggplot(top_10, aes(x = reorder(country_name, +total_msw_total_msw_generated_tons_year), y = total_msw_total_msw_generated_tons_year)) +
+  geom_col() + 
+  geom_bar(stat="identity", fill = "darkred") +
+  xlab("Country") + ylab("total waste in tonnes") + 
+  coord_flip()
+```
+
+Global waste composition
+```{r}
+sorted <- country_waste_data[order(country_waste_data$organic_waste, decreasing=TRUE),]
+sorted
+top_10 <- head(sorted, 10)
+
+ggplot(top_10, aes(x = reorder(country_name, +organic_waste), y = organic_waste)) +
+  geom_col() + 
+  geom_bar(stat="identity", fill = "darkred") +
+  xlab("Country") + ylab("total waste in tonnes") + 
+  coord_flip()
+```
+
+What constitutes each country's waste? 
+Pie Chart. Can select which country's pie chart you want.
+```{r}
+
+```
+
+Calculate GDP per capita
+```{r}
+gpc <- country_waste_data$gdp/country_waste_data$population_population_number_of_people
+country_waste_data$gdp_per_capita <- gpc
+country_waste_data$gdp_per_capita
+```
+
+waste generation calculate per kg
+```{r}
+country_waste_data$total_waste_per_kg <- country_waste_data$total_msw_total_msw_generated_tons_year*1000
+country_waste_data$total_waste_per_kg
+```
+
+Calculate waste generation per capita
+Waste Generated divided by population
+```{r}
+country_waste_data$waste_per_capita <- country_waste_data$total_waste_per_kg/country_waste_data$population_population_number_of_people
+country_waste_data$waste_per_capita_day <- country_waste_data$waste_per_capita/365
+country_waste_data$waste_per_capita_day
+```
+
+Scatter plot with population
+
+```{r}
+cdat <- country_waste_data %>% mutate(plotname = as.character(country_name))
+cdat <- country_waste_data %>% mutate(plotname = as.character(country_name))
+
+countrylist <- c("Sierra Leone", "Argentina", "Canada", "Ireland", "United Kingdom", "United States",
+  "New Zealand", "Iceland", "Japan", "Luxembourg", "Netherlands", "Switzerland", "Qatar", "South Africa", "Rwanda", "China")
+
+cdat <- cdat %>%
+  mutate(plotname = ifelse(plotname %in% countrylist, plotname, ""))
+
+cdat %>%
+  select(country_name, plotname)
+```
+
+```{r}
+ggplot(cdat, aes(x = population_population_number_of_people, y = waste_per_capita)) +
+  geom_point() +
+  xlab("population") + 
+  ylab("waste per capita (kg/person/year)") +
+  geom_text_repel(aes(label = plotname), size = 4)
+```
+
+Calculate average total waste for each income group
+```{r}
+hic <- country_waste_data %>% filter(income_id == "HIC")
+umc <- country_waste_data %>% filter(income_id == "UMC")
+lmc <- country_waste_data %>% filter(income_id == "LMC")
+lic <- country_waste_data %>% filter(income_id == "LIC")
+
+hic_mean <- mean(hic$total_msw_total_msw_generated_tons_year, na.rm = T)
+umc_mean <- mean(umc$total_msw_total_msw_generated_tons_year, na.rm = T)
+lmc_mean <- mean(lmc$total_msw_total_msw_generated_tons_year, na.rm = T)
+lic_mean <- mean(lic$total_msw_total_msw_generated_tons_year, na.rm = T)
+
+hic_pop <- mean(hic$population_population_number_of_people, na.rm = T)
+umc_pop <- mean(umc$population_population_number_of_people, na.rm = T)
+lmc_pop <- mean(lmc$population_population_number_of_people, na.rm = T)
+lic_pop <- mean(lic$population_population_number_of_people, na.rm = T)
+
+hic_mean_capita <- mean(hic$waste_per_capita_day, na.rm = T)
+umc_mean_capita <- mean(umc$waste_per_capita_day, na.rm = T)
+lmc_mean_capita <- mean(lmc$waste_per_capita_day, na.rm = T)
+lic_mean_capita <- mean(lic$waste_per_capita_day, na.rm = T)
+
+hic_gdp <- mean(hic$gdp, na.rm = T)
+umc_gdp <- mean(umc$gdp, na.rm = T)
+lmc_gdp <- mean(lmc$gdp, na.rm = T)
+lic_gdp <- mean(lic$gdp, na.rm = T)
+
+
+
+id_mean <- c(hic_mean, umc_mean, lmc_mean, lic_mean)
+gdp_mean <- c(hic_gdp, umc_gdp, lmc_gdp, lic_gdp)
+capita_mean <- c(hic_mean_capita, umc_mean_capita, lmc_mean_capita, lic_mean_capita)
+
+id_mean_df <- data.frame(id_mean, gdp_mean, capita_mean)
+id_mean_df
+```
+
+Bubble plot
+```{r}
+ggplot(id_mean_df, aes(x=gdp_mean, y=capita_mean, size = id_mean)) +
+    geom_point(alpha=0.8) +
+    scale_size(range = c(1, 15), name="Total waste in millions")
+```
+Donut dataframe
+```{r}
+a <- c(sum(country_waste_data$total_msw_total_msw_generated_tons_year, na.rm = T))
+b <- c("total waste in millions per tonne")
+donut <- data.frame(a, b)
+donut$labelPosition <- (donut$a + 0) / 2
+donut$label <- paste0(donut$b, "\n value: ", donut$a)
+
+ggplot(donut, aes(ymax=a, ymin=0, xmax=4, xmin=3, fill=b), scientific = FALSE) +
+     geom_rect() +
+     geom_label( x=3.5, aes(y=labelPosition, label=label), size=3) +
+     coord_polar(theta="y") + 
+     xlim(c(2, 4)) +
+     theme_void() +
+     theme(legend.position = "none")
+```
+
+Donut Plot
+```{r}
+LCN <- country_waste_data %>% filter(region_id == "LCN")
+SAS <- country_waste_data %>% filter(region_id == "SAS")
+SSF <- country_waste_data %>% filter(region_id == "SSF")
+ECS <- country_waste_data %>% filter(region_id == "ECS")
+EAS <- country_waste_data %>% filter(region_id == "EAS")
+MEA <- country_waste_data %>% filter(region_id == "MEA")
+NAC <- country_waste_data %>% filter(region_id == "NAC")
+
+total_LCN <- sum(LCN$total_msw_total_msw_generated_tons_year, na.rm = T)
+total_SAS <- sum(SAS$total_msw_total_msw_generated_tons_year, na.rm = T)
+total_SSF <- sum(SSF$total_msw_total_msw_generated_tons_year, na.rm = T)
+total_ECS <- sum(ECS$total_msw_total_msw_generated_tons_year, na.rm = T)
+total_EAS <- sum(EAS$total_msw_total_msw_generated_tons_year, na.rm = T)
+total_MEA <- sum(MEA$total_msw_total_msw_generated_tons_year, na.rm = T)
+total_NAC <- sum(NAC$total_msw_total_msw_generated_tons_year, na.rm = T)
+
+region <- c("LCN", "SAS", "SSF", "ECS", "EAS", "MEA", "NAC")
+waste <- c(total_LCN, total_SAS, total_SSF, total_ECS, total_EAS, total_MEA, total_NAC)
+
+total_waste <- data.frame(region, waste)
+
+total_waste$fraction <- total_waste$waste / sum(total_waste$waste)
+
+total_waste$ymax <- cumsum(total_waste$fraction)
+total_waste$ymin <- c(0, head(total_waste$ymax, n=-1))
+
+total_waste$labelPosition <- (total_waste$waste + 0) / 2
+total_waste$label <- paste0(total_waste$region, "\n value: ", total_waste$region)
+
+ggplot(total_waste, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=region), scientific = FALSE) +
+     geom_rect() +
+     # geom_text( x=3.0, aes(y=labelPosition, label=label), size=3) +
+     coord_polar(theta="y") + 
+     xlim(c(2, 4))  
+     # theme_void()
+     # theme(legend.position = "none")
+```
+
+```{r}
+hic <- country_waste_data %>% filter(income_id == "HIC")
+umc <- country_waste_data %>% filter(income_id == "UMC")
+lmc <- country_waste_data %>% filter(income_id == "LMC")
+lic <- country_waste_data %>% filter(income_id == "LIC")
+
+total_HIC <- sum(hic$total_msw_total_msw_generated_tons_year, na.rm = T)
+total_UMC <- sum(umc$total_msw_total_msw_generated_tons_year, na.rm = T)
+total_LMC <- sum(lmc$total_msw_total_msw_generated_tons_year, na.rm = T)
+total_LIC <- sum(lic$total_msw_total_msw_generated_tons_year, na.rm = T)
+
+income <- c("HIC", "UMC", "LMC", "LIC")
+income_total_waste <- c(total_HIC, total_UMC, total_LMC, total_LIC)
+
+income_waste <- data.frame(income, income_total_waste)
+
+income_waste
+income_waste$fraction <- income_waste$income_total_waste / sum(income_waste$income_total_waste)
+
+income_waste$ymax <- cumsum(income_waste$fraction)
+income_waste$ymin <- c(0, head(income_waste$ymax, n=-1))
+
+income_waste$labelPosition <- (income_waste$income_total_waste + 0) / 2
+income_waste$label <- paste0(income_waste$income, "\n value: ", income_waste$income)
+
+ggplot(income_waste, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=income), scientific = FALSE) +
+     geom_rect() +
+     # geom_text( x=3.0, aes(y=labelPosition, label=label), size=3) +
+     coord_polar(theta="y") + 
+     xlim(c(2, 4))  
+     # theme_void()
+     # theme(legend.position = "none")
+```
+
+Animated Pie Chart
+```{r}
+# library(gganimate)
+# library(gifski)
+# library(png)
+# 
+# cv <- c(sum(country_waste_data$total_msw_total_msw_generated_tons_year, na.rm = T))
+# # Make 2 basic states and concatenate them:
+# a <- data.frame(waste=c("World"), total_waste_in_the_world_per_million_tonnes = 0, frame=rep('a',3))
+# b <- data.frame(waste=c("World"), total_waste_in_the_world_per_million_tonnes =cv, frame=rep('b',3))
+# data <- rbind(a,b)  
+#  
+# # Basic barplot:
+# ggplot(a, aes(x=waste, y=total_waste_in_the_world_per_million_tonnes, fill=waste), scientific = FALSE) + 
+#   geom_bar(stat='identity')
+#  
+# # Make a ggplot, but add frame=year: one image per year
+# gg <- ggplot(data, aes(x=waste, y=total_waste_in_the_world_per_million_tonnes, fill=waste), scientific = FALSE) + 
+#   geom_bar(stat='identity', scientific = FALSE) +
+#   theme_bw() +
+#   # gganimate specific bits:
+#   transition_states(
+#     frame,
+#     transition_length = 10,
+#     state_length = 1
+#   ) +
+#   ease_aes('sine-in-out')
+# 
+# # Save at gif:
+# animate(gg, end_pause = 10, width=1000, height=600,fps = 5)
+# anim_save("288-animated-barplot-transition.gif", renderer = gifski_renderer())
+```
+
+Total Plot
+```{r}
+wt <- sum(country_waste_data$total_msw_total_msw_generated_tons_year, na.rm = T)
+ht <- sum(country_waste_data$special_waste_hazardous_waste_tons_year, na.rm = T)
+it <- sum(country_waste_data$special_waste_industrial_waste_tons_year, na.rm = T)
+
+total_alarm <- data.frame(waste = c("total_waste_in_the_world", "total_hazardous_waste", "total_industrial_waste"), waste_in_million_tonnes = c(wt, ht, it))
+
+# total_alarm <- data.frame(total_waste_in_the_world = c(wt), total_hazardous_waste = c(ht), total_industrial_waste = c(it))
+
+total_alarm
+
+ggplot(total_alarm, aes(x = waste, y = total_waste_in_the_world)) +
+  geom_col() + 
+  geom_bar(stat="identity", fill = "darkred") +
+  xlab("Alarming Wastes") + ylab("total waste in million tonnes")
+```
+```{r}
+compareSelect <- country
+```
+
+```{r}
+compareSelect <- country_waste_data %>% select(glass_waste, organic_waste)
+compareSelect
+colSums(compareSelect, na.rm = T)
+comparedf <- data.frame(c)
+sumCompare <- sum(c(compareSelect), na.rm = T)
+sumCompare
+
+# Calculate the sum of all waste types first.
+# Put it into a new df.
+# Then if triggered, select the columns accordingly.
+```
+
+municiipal waste treatment
+```{r}
+treated <- municipal_waste_data %>% filter(Variable == "Municipal waste treated", Country == "Australia")
+treated2 <- treated %>% select(Year, Value)
+ggplot(treated2, aes(x=Year, y=Value), scientific = FALSE) +
+  geom_line() +
+  geom_point()
+```
+
+
+
+
+
+
+
+
