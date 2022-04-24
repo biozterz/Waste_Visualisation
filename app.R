@@ -11,6 +11,7 @@ library(hrbrthemes)
 library(viridis)
 library(gghighlight)
 library(plotly)
+library(fmsb)
 
 country_waste_data <- read.csv("country_level_data.csv")
 municpal_waste_data <- read.csv("municipal_waste.csv")
@@ -22,6 +23,9 @@ OECD_country <- c("None", municpal_waste_data$Country)
 corr_type <- c("gdp", "population")
 donut_type <- c("region_waste", "income_waste")
 alarm_type <- c("total municipal waste in the world", "total hazardous waste", "total industrial waste", "total electronic waste")
+radar1 <- country_waste_data[,c(3,6:14)]
+radar2 <- radar1[complete.cases(radar1[,2:10]),]
+radar_country <- c(radar2$country_name)
 
 # Define UI for application.
 ui <- fluidPage(
@@ -57,6 +61,7 @@ ui <- fluidPage(
           br(),
           br(),
           
+          # Alarming Figures
           fluidRow(
             column(4, h2("Alarming Figures!"),
                    fluidRow(
@@ -151,44 +156,38 @@ ui <- fluidPage(
           br(),
           br(),
           br(),
-          br(),
-          br(),
-          br(),
-          br(),
-          br(),
+          
+          # Radar plot for percentages of different types of waste.
+          fluidRow(column(12, tableOutput("test5"))),
           
           fluidRow(
-            column(4, h1("Waste Domination"),
-                   fluidRow(
-                     column(12, p("Top 5 countries with the most waste (specific waste)",
-                            fluidRow(
-                              column(12, selectInput(inputId = "wasteType", label = "Select type of waste", waste_type)),
-                            )
-                          ),
-                        )
-                   )),
-              
-              column(8, plotOutput("wastePlot")),
-                    ),
-          
-          br(),
-          br(),
-          br(),
-          br(),
-          br(),
-          br(),
-          
-          fluidRow(
-            column(12, tableOutput("test"))
+            column(12, selectizeInput(
+              inputId = "radarCountryCompare",
+              label = "Select your country",
+              choices = NULL,
+              multiple = T,
+              ),
+              fluidRow(
+                column(12, plotOutput("radarPlot", height = "650"))
+              )
+            )
+            
           ),
           
-          fluidRow(
-            column(4, h1("How's your country reacting to it?"),
-                   fluidRow(
-                     column(12, selectInput(inputId = "collectionType", label = "Select type of waste", country)),         
-                   )),
-            column(6, plotOutput("collectionPlot")),
-          ),
+          br(),
+          br(),
+          br(),
+          br(),
+          br(),
+          
+          fluidRow(column(12, plotOutput("doublePlot"))),
+          
+          br(),
+          br(),
+          br(),
+          br(),
+          br(),
+          br(),
             
 )
 
@@ -333,6 +332,7 @@ server <- function(input, output, session) {
       session,
       inputId = "countryHighlight",
       choices = OECD_country,
+      selected = "None",
       server = T)
     
     tCompare <- reactive({
@@ -361,7 +361,59 @@ server <- function(input, output, session) {
         )
       }
     })
-
+    
+    # Radar Plot
+    
+    updateSelectizeInput(
+      session = session,
+      inputId = "radarCountryCompare",
+      selected = "Singapore",
+      choices = radar_country,
+      server = TRUE)
+    
+    z <- reactive({
+      country_waste_data %>% filter(country_name %in% input$radarCountryCompare)
+    })
+  
+    y <- reactive({
+      z()[,6:14]
+    })
+    
+    t <- reactive({
+      data <- y()
+      row.names(data) <- z()[,3]
+      data
+    })
+    
+    x <- reactive({
+      rbind(rep(50,9) , rep(0,9) , t())
+    }) 
+    
+    # Color vector
+    colors_border=c( rgb(0.2,0.5,0.5,0.9), rgb(0.8,0.2,0.5,0.9) , rgb(0.7,0.5,0.1,0.9) )
+    colors_in=c( rgb(0.2,0.5,0.5,0.4), rgb(0.8,0.2,0.5,0.4) , rgb(0.7,0.5,0.1,0.4) )
+    
+    output$radarPlot <- renderPlot({
+      
+      req(input$radarCountryCompare)
+      req(x())
+      
+      radarchart(x(), axistype=1,
+                 
+                 #custom polygon
+                 pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
+                 
+                 #custom the grid
+                 cglcol="grey", cglty=1, axislabcol="grey", caxislabels=seq(0,20,5), cglwd=0.8,
+                 
+                 #custom labels
+                 vlcex=0.8,
+                 )
+      legend(x=1.5, y=1.2, legend = input$radarCountryCompare, bty = "n", pch=20 , col=colors_in , text.col = "black", cex=1.2, pt.cex=3)
+    })
+    
+    # Scatter Plot
+    
 }
 
 # Run the application 
